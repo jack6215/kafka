@@ -29,15 +29,17 @@
   <allow pkg="org.junit" />
   <allow pkg="org.easymock" />
   <allow pkg="org.powermock" />
-
+  <allow pkg="java.security" />
   <allow pkg="javax.net.ssl" />
-  <allow pkg="javax.security.auth" />
+  <allow pkg="javax.security" />
+  <allow pkg="org.ietf.jgss" />
 
   <!-- no one depends on the server -->
   <disallow pkg="kafka" />
 
   <!-- anyone can use public classes -->
   <allow pkg="org.apache.kafka.common" exact-match="true" />
+  <allow pkg="org.apache.kafka.common.security" />
   <allow pkg="org.apache.kafka.common.utils" />
 
   <subpackage name="common">
@@ -103,14 +105,14 @@
     <subpackage name="producer">
       <allow pkg="org.apache.kafka.clients.producer" />
     </subpackage>
+  </subpackage>
 
-    <subpackage name="tools">
-      <allow pkg="org.apache.kafka.clients.producer" />
-      <allow pkg="org.apache.kafka.clients.consumer" />
-      <allow pkg="com.fasterxml.jackson" />
-      <allow pkg="net.sourceforge.argparse4j" />
-      <allow pkg="org.apache.log4j" />
-    </subpackage>
+  <subpackage name="tools">
+    <allow pkg="org.apache.kafka.clients.producer" />
+    <allow pkg="org.apache.kafka.clients.consumer" />
+    <allow pkg="com.fasterxml.jackson" />
+    <allow pkg="net.sourceforge.argparse4j" />
+    <allow pkg="org.apache.log4j" />
   </subpackage>
 
   <subpackage name="streams">
@@ -144,6 +146,7 @@
     <allow pkg="org.apache.kafka.copycat.data" />
     <allow pkg="org.apache.kafka.copycat.errors" />
     <allow pkg="org.apache.kafka.clients" />
+    <allow pkg="org.apache.kafka.test"/>
 
     <subpackage name="source">
       <allow pkg="org.apache.kafka.copycat.connector" />
@@ -158,6 +161,14 @@
 
     <subpackage name="runtime">
       <allow pkg="org.apache.kafka.copycat" />
+
+      <subpackage name="rest">
+        <allow pkg="org.eclipse.jetty" />
+        <allow pkg="javax.ws.rs" />
+        <allow pkg="javax.servlet" />
+        <allow pkg="org.glassfish.jersey" />
+        <allow pkg="com.fasterxml.jackson" />
+      </subpackage>
     </subpackage>
 
     <subpackage name="cli">
@@ -174,6 +185,8 @@
 
     <subpackage name="util">
       <allow pkg="org.apache.kafka.copycat" />
+      <!-- for annotations to avoid code duplication -->
+      <allow pkg="com.fasterxml.jackson.annotation" />
     </subpackage>
 
     <subpackage name="json">

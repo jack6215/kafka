@@ -219,9 +219,10 @@ class SocketServerTest extends JUnitSuite {
   }
 
   @Test
-  def testSSLSocketServer(): Unit = {
+  def testSslSocketServer(): Unit = {
     val trustStoreFile = File.createTempFile("truststore", ".jks")
-    val overrideProps = TestUtils.createBrokerConfig(0, TestUtils.MockZkConnect, port = 0, enableSSL = true, trustStoreFile = Some(trustStoreFile))
+    val overrideProps = TestUtils.createBrokerConfig(0, TestUtils.MockZkConnect, enableSsl = true,
+      trustStoreFile = Some(trustStoreFile))
     overrideProps.put("listeners", "SSL://localhost:0")
 
     val serverMetrics = new Metrics

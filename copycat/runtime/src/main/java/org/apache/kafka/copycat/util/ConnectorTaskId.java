@@ -17,25 +17,31 @@
 
 package org.apache.kafka.copycat.util;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.Serializable;
 
 /**
  * Unique ID for a single task. It includes a unique connector ID and a task ID that is unique within
  * the connector.
  */
-public class ConnectorTaskId implements Serializable {
+public class ConnectorTaskId implements Serializable, Comparable<ConnectorTaskId> {
     private final String connector;
     private final int task;
 
-    public ConnectorTaskId(String job, int task) {
-        this.connector = job;
+    @JsonCreator
+    public ConnectorTaskId(@JsonProperty("connector") String connector, @JsonProperty("task") int task) {
+        this.connector = connector;
         this.task = task;
     }
 
+    @JsonProperty
     public String connector() {
         return connector;
     }
 
+    @JsonProperty
     public int task() {
         return task;
     }
@@ -67,5 +73,13 @@ public class ConnectorTaskId implements Serializable {
     @Override
     public String toString() {
         return connector + '-' + task;
+    }
+
+    @Override
+    public int compareTo(ConnectorTaskId o) {
+        int connectorCmp = connector.compareTo(o.connector);
+        if (connectorCmp != 0)
+            return connectorCmp;
+        return ((Integer) task).compareTo(o.task);
     }
 }

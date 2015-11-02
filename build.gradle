@@ -33,6 +33,9 @@ def junit='junit:junit:4.11'
 def easymock='org.easymock:easymock:3.3.1'
 def powermock='org.powermock:powermock-module-junit4:1.6.2'
 def powermock_easymock='org.powermock:powermock-api-easymock:1.6.2'
+def jackson_version = '2.5.4'
+def jetty_version = '9.2.12.v20150709'
+def jersey_version = '2.22.1'
 
 allprojects {
   apply plugin: 'idea'
@@ -42,7 +45,7 @@ allprojects {
 }
 
 ext {
-    gradleVersion = "2.4"
+    gradleVersion = "2.8"
     buildVersionFileName = "kafka-version.properties"
 
     userMaxForks = project.hasProperty('maxParallelForks') ? maxParallelForks.toInteger() : null
@@ -72,8 +75,7 @@ rat {
     'gradlew',
     'gradlew.bat',
     '**/README.md',
-    '.reviewboardrc',
-    'system_test/**'
+    '.reviewboardrc'
   ])
 }
 
@@ -149,6 +151,8 @@ subprojects {
   }
 
   task docsJar(dependsOn: javadocJar)
+
+  task systemTestLibs(dependsOn: jar)
 
   artifacts {
     archives srcJar
@@ -268,8 +272,8 @@ project(':core') {
     testCompile "org.scalatest:scalatest_$baseScalaVersion:2.2.5"
     testCompile project(':clients')
     testCompile project(':clients').sourceSets.test.output
+    testCompile 'org.apache.hadoop:hadoop-minikdc:2.7.1'
     testRuntime "$slf4jlog4j"
-
     zinc 'com.typesafe.zinc:zinc:0.3.7'
   }
 
@@ -282,6 +286,9 @@ project(':core') {
     compile.exclude module: 'jmxtools'
     compile.exclude module: 'mail'
     compile.exclude module: 'netty'
+    // To prevent a UniqueResourceException due the same resource existing in both
+    // org.apache.directory.api/api-all and org.apache.directory.api/api-ldap-schema-data
+    testCompile.exclude module: 'api-ldap-schema-data'
   }
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
@@ -311,6 +318,9 @@ project(':core') {
     from(configurations.runtime) { into("libs/") }
     from(configurations.archives.artifacts.files) { into("libs/") }
     from(project.siteDocsTar) { into("site-docs/") }
+    from(project(':log4j-appender').jar) { into("libs/") }
+    from(project(':tools').jar) { into("libs/") }
+    from(project(':tools').configurations.runtime) { into("libs/") }
   }
 
   jar {
@@ -496,7 +506,7 @@ project(':tools') {
     dependencies {
         compile project(':clients')
         compile 'net.sourceforge.argparse4j:argparse4j:0.5.0'
-        compile 'com.fasterxml.jackson.core:jackson-databind:2.5.4'
+        compile "com.fasterxml.jackson.core:jackson-databind:$jackson_version"
         compile "$slf4jlog4j"
 
         testCompile "$junit"
@@ -666,6 +676,21 @@ project(':copycat:api') {
     include "**/org/apache/kafka/copycat/*"
   }
 
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('slf4j-log4j12*')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+      exclude('copycat-*')
+    }
+    into "$buildDir/dependant-libs"
+  }
+
+  jar {
+    dependsOn copyDependantLibs
+  }
+
   artifacts {
     archives testJar
   }
@@ -687,7 +712,7 @@ project(':copycat:json') {
   dependencies {
     compile project(':copycat:api')
     compile "$slf4japi"
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.5.4'
+    compile "com.fasterxml.jackson.core:jackson-databind:$jackson_version"
 
     testCompile "$junit"
     testCompile "$easymock"
@@ -712,6 +737,21 @@ project(':copycat:json') {
     include "**/org/apache/kafka/copycat/*"
   }
 
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('slf4j-log4j12*')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+      exclude('copycat-*')
+    }
+    into "$buildDir/dependant-libs"
+  }
+
+  jar {
+    dependsOn copyDependantLibs
+  }
+
   artifacts {
     archives testJar
   }
@@ -724,18 +764,6 @@ project(':copycat:json') {
     configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
-
-  tasks.create(name: "copyDependantLibs", type: Copy) {
-    from (configurations.runtime) {
-      exclude('kafka-clients*')
-      exclude('copycat-*')
-    }
-    into "$buildDir/dependant-libs"
-  }
-
-  jar {
-    dependsOn copyDependantLibs
-  }
 }
 
 project(':copycat:runtime') {
@@ -747,10 +775,16 @@ project(':copycat:runtime') {
     compile project(':clients')
     compile "$slf4japi"
 
+    compile "org.eclipse.jetty:jetty-server:$jetty_version"
+    compile "org.eclipse.jetty:jetty-servlet:$jetty_version"
+    compile "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:$jackson_version"
+    compile "org.glassfish.jersey.containers:jersey-container-servlet:$jersey_version"
+
     testCompile "$junit"
     testCompile "$easymock"
     testCompile "$powermock"
     testCompile "$powermock_easymock"
+    testCompile project(':clients').sourceSets.test.output
     testRuntime "$slf4jlog4j"
     testRuntime project(":copycat:json")
   }
@@ -769,6 +803,21 @@ project(':copycat:runtime') {
 
   javadoc {
     include "**/org/apache/kafka/copycat/*"
+  }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('slf4j-log4j12*')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+      exclude('copycat-*')
+    }
+    into "$buildDir/dependant-libs"
+  }
+
+  jar {
+    dependsOn copyDependantLibs
   }
 
   artifacts {
@@ -814,6 +863,21 @@ project(':copycat:file') {
 
   javadoc {
     include "**/org/apache/kafka/copycat/*"
+  }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('slf4j-log4j12*')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+      exclude('copycat-*')
+    }
+    into "$buildDir/dependant-libs"
+  }
+
+  jar {
+    dependsOn copyDependantLibs
   }
 
   artifacts {
